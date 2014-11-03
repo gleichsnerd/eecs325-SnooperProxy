@@ -1,0 +1,40 @@
+Adam Gleichsner (amg188@case.edu)
+eecs325
+Project 1
+
+proxyd - The lightweight Java proxy
+
+Port used: 5019
+Tested on: Google Chrome for OSX10.10
+Websites tested:
+www.cnn.com
+www.reddit.com
+www.stackoverflow.com
+www.docs.oracle.com
+
+
+To Compile:
+proxyd uses an external Thread class, ProxyThread.java. Although it would be ideal for ProxyThread to be recompiled when
+proxyd is, class files will be included in the submission so you don't have to worry about it.
+
+
+To Run:
+
+proxyd will default to port 5019 when no arguments are given.
+
+proxyd will accept one argument:
+
+  -port <port number>
+
+For example:
+
+java proxyd -port 50025
+
+**Important note**
+This proxy isn't efficient and will like to take time to load large HTTP response bodies, i.e. large images or video frames.
+Please be patient, it will load text and images in due time.
+
+**Another Important node**
+The nature of the beast is that the browser will continue sending requests for content even after you hit stop or try to open
+a new page. Unfortunately, this means that opening a complex page (like cnn.com) and then switching to a new website (such as
+stackoverflow.com) will take a while since the proxy port is still being clogged with requests for the old page.

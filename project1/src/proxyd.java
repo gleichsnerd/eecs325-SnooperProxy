@@ -1,132 +1,67 @@
 import java.io.*;
-import java.lang.reflect.Array;
 import java.net.*;
 import java.util.ArrayList;
-import java.util.Arrays;
 
+/**
+ * proxyd class - A lightweight snooping proxy
+ * @author Adam Gleichsner
+ * eecs325 Project 1
+ */
 public class proxyd {
 	
+	//ArrayList to hold all created threads
+	private static ArrayList<ProxyThread> threads;
 	
-	int port;
-	
-	public proxyd(String[] args) throws IOException {
+	/**
+	 * Method to actively start a ProxyThread for every connection on the port
+	 * provided.
+	 * @param port - Port to grab requests from
+	 * @throws IOException
+	 */
+	private static void runServer(int port) throws IOException {
 		
-		for(int i = 0; i < args.length; i++) {
-			if(args[i].equals("-port") && i + 1 < args.length)
-				this.port = Integer.parseInt(args[i + 1]);
-		}
-		
-		proxyd.runServer(this.port);
-		
-	}
-
-	public static ArrayList<String> readAllLines(BufferedReader reader) throws IOException {
-		ArrayList<String> returnList = new ArrayList<String>();
-		String line = reader.readLine();
-		
-		while(line != null && !(line.length() == 0)){
-			returnList.add(line);
-			System.out.println(line);
-			line = reader.readLine();
-		}
-		System.out.println("Retrieved List");
-		return returnList;
-	}
-	
-	public static void runServer(int port) throws IOException {
-		
+		//Create the socket to always listen on
         ServerSocket welcomeSocket = new ServerSocket(port);
-        System.out.println("Server initialized");
+        System.out.println("Proxy initialized on port " + port);
+        System.out.println("Press CTRL+C to quit");
         
-        while(true)
-        {
-        	System.out.println("Loop");
-           Socket connectionSocket = welcomeSocket.accept();
-           BufferedReader inFromClient =
-              new BufferedReader(new InputStreamReader(connectionSocket.getInputStream()));
-           DataOutputStream outToClient = new DataOutputStream(connectionSocket.getOutputStream());
-           ArrayList<String> clientList = proxyd.readAllLines(inFromClient);
-           if (clientList.size() > 0) {
-	           String hostname = clientList.get(1).split("Host: ")[1];
-	           System.out.println(hostname);
-	           
-	           InetAddress target = InetAddress.getByName(hostname);
-	           Socket helloSocket = new Socket(target.getHostAddress(), 80);   
-	           OutputStream toTarget= new DataOutputStream(helloSocket.getOutputStream());
-	           for(String line: clientList) {
-	        	   toTarget.write((line + '\n').getBytes());
-	           }
-	           toTarget.write(("\r\n").getBytes());
-	           BufferedReader inFromServer = new BufferedReader(new InputStreamReader(helloSocket.getInputStream()));
-	           InputStream rawServerStream = helloSocket.getInputStream();
-	           String inLine = inFromServer.readLine();
-	           int inSize = 0;
-	           while (inLine.length() != 0) {
-	        	   System.out.println(inLine);
-	        	   outToClient.write((inLine + "\r\n").getBytes());
-	        	   if (inLine.contains("Content-Length")) {
-	        		   inSize = Integer.parseInt((inLine.split("Content-Length: ")[1]));
-	        	   }
-	        	   inLine = inFromServer.readLine();
-	           }
-//	           toTarget.write(("\r\n").getBytes());
-	           byte[] foo = new byte[inSize];
-	           rawServerStream.read(foo, 0, inSize);
-	           for (int i = 0; i < foo.length; i++) {
-	        	   outToClient.write(foo[i]);
-	           }
-	           outToClient.flush();
-	           helloSocket.close();
-	           connectionSocket.close();
-	           
-	           
-           }
-//           Socket connection = new Socket(inFromClient.)
-//           Socket 
-//           String sentence;
-//           String modifiedSentence;
-//           BufferedReader inFromUser = new BufferedReader( new InputStreamReader(System.in));
-//           Socket clientSocket = new Socket("localhost", 6789);
-//           DataOutputStream outToServer = new DataOutputStream(clientSocket.getOutputStream());
-//           BufferedReader inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-//           sentence = inFromUser.readLine();
-//           outToServer.writeBytes(sentence + '\n');
-//           modifiedSentence = inFromServer.readLine();
-//           System.out.println("FROM SERVER: " + modifiedSentence);
-//           clientSocket.close();
-//           
-           
-//           capitalizedSentence = clientSentence.toUpperCase() + '\n';
-//           outToClient.writeBytes(capitalizedSentence);
+        //Remember, you're here forever
+        while(true) {
+        	//For each new thread, add it to our arraylist and start it
+        	//The arraylist is really only there to prevent overwriting old threads
+        	//as well as setting up the groundwork for future resource management
+			threads.add(new ProxyThread(welcomeSocket.accept()));
+			threads.get(threads.size() - 1).run();
         }
-  	
-//		try
-//	    {
-//	        ServerSocket listenSocket = new ServerSocket(port);
-//	        while(true)
-//	        {
-//	            System.out.println("wait");
-//	            Socket acceptSocket = listenSocket.accept(); // blocking call until it receives a connection
-//	            System.out.println("Accepted");
-//	            System.out.println(acceptSocket.getOutputStream());
-////	            myThread thr = new myThread(acceptsocket);
-////	            thr.start();
-//	        }
-//	        
-//	    }
-//	    catch(IOException e)
-//	    {
-//	        System.err.println(">>>>" + e.getMessage() );
-//	        e.printStackTrace();
-//	    }
-//		
 	}
 	
-	
+	/**
+	 * main method to grab all input commands
+	 * Defauls the proxy to port 5019 in the case of no input port
+	 * Accepts one argument: -port 1234
+	 * @param args - Array of all input arguments
+	 * @throws IOException
+	 */
 	public static void main(String[] args) throws IOException {
-			proxyd proxy = new proxyd(new String[]{"-port", "50025"});
-			
-	}
+		int port = 5019;
+		threads = new ArrayList<ProxyThread>();
 		
-	
+		//If no inputs, default to 5019
+		if (args.length == 0) {
+			System.out.println("No input port given: defaulting to port 5019");
+			proxyd.runServer(port);
+		//Else, make sure that -port is given with a port number and in the correct order
+		} else if (args.length == 2) {
+			for(int i = 0; i < args.length; i++) {
+				if(args[i].equals("-port") && i + 1 < args.length)
+					port = Integer.parseInt(args[i + 1]);
+				else if (args[i].equals("-port"))
+					System.err.println("Argument Error: Accepted argument -port should be followed by a port number");
+			}
+			proxyd.runServer(port);
+		//Otherwise, err out
+		} else {
+			System.err.println("Argument Error: Invalid number of arguments");
+		}
+	}
 }
